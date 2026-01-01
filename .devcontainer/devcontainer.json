@@ -1,11 +1,9 @@
 {
   "name": "Excel Data Explorer Agent Environment",
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
-  
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  
   "customizations": {
     "vscode": {
       "extensions": [
@@ -26,16 +24,10 @@
       }
     }
   },
-  
   "postCreateCommand": "pip install --upgrade pip && pip install -r .devcontainer/requirements-codespace.txt",
-  
-  "forwardPorts": [8000, 8080],
-  
-  "remoteUser": "vscode",
-  
-  "mounts": [
-    "source=${localWorkspaceFolder}/.vscode/prompts,target=/workspaces/${localWorkspaceFolderBasename}/.vscode/prompts,type=bind,consistency=cached"
+  "forwardPorts": [
+    8000,
+    8080
   ],
-  
-  "workspaceFolder": "/workspaces/ExploreData"
+  "remoteUser": "vscode"
 }

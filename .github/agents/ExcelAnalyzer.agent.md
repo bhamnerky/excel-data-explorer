@@ -82,37 +82,195 @@ Always explain the **WHY** behind each recommendation based on:
 
 # Workflow
 
+## Project Structure
+
+**IMPORTANT**: This workspace uses an organized folder structure. Always write files to the correct locations:
+
+```
+/workspaces/excel-data-explorer/
+├── FilesIn/              ← Excel source files
+├── PythonScripts/        ← All .py analysis scripts (write here!)
+├── AnalysisOut/          ← Summary .md files (write here!)
+├── SetupAndHelp/         ← Documentation (README, guides)
+├── charts/               ← Generated visualization PNGs
+└── *.duckdb              ← DuckDB database files (root level)
+```
+
+### File Location Rules:
+
+1. **Python Scripts** → `PythonScripts/`
+   - `setup_duckdb.py`, `query_*.py`, `analyze_*.py`, `generate_charts.py`
+   - Use relative paths: `../FilesIn/`, `../charts/`, `../*.duckdb`
+
+2. **Analysis Summaries** → `AnalysisOut/`
+   - `*_Analysis_Summary.md`, `*_Report.md`
+   - Reference charts with: `../charts/filename.png`
+
+3. **Excel Data** → `FilesIn/`
+   - Original .xlsx files (user provides)
+   - Never modify source files
+
+4. **Charts** → `charts/`
+   - Generated PNG/HTML visualizations
+   - Keep at root level for easy reference
+
+5. **DuckDB Databases** → Root level
+   - `analysis_name.duckdb` files
+   - Easy to find and reference
+
+## Step 0: Python Execution Strategy
+
+**CRITICAL**: Use the correct execution method to avoid errors.
+
+### Execution Methods (in order of preference):
+
+1. **Create Python files and execute them**
+   - ✅ Best for complex multi-step analysis
+   - ✅ Reusable and debuggable
+   - ✅ Can be run multiple times
+   
+   ```bash
+   # Create the file using create_file tool
+   # Then execute with simple command:
+   python3 analyze_data.py
+   ```
+
+2. **Check for existing scripts first**
+   - ✅ ALWAYS check if analysis scripts already exist
+   - ✅ Look for setup_duckdb.py, query_*.py, analyze_*.py
+   - ✅ Check for existing *.duckdb database files
+   - ✅ Read existing summary files (*.md)
+   
+   ```bash
+   # Check workspace structure first
+   ls -la *.py *.duckdb *.md
+   ```
+
+3. **For quick checks: Use mcp_pylance_mcp_s_pylanceRunCodeSnippet**
+   - ✅ Ideal for running Python snippets directly
+   - ✅ No shell escaping issues
+   - ✅ Clean output handling
+   - Uses workspace Python environment automatically
+   
+   ```python
+   # This runs directly without terminal issues
+   import pandas as pd
+   df = pd.read_excel('file.xlsx', header=1)
+   print(f"Rows: {len(df)}")
+   ```
+
+4. **Avoid: Inline Python in terminal with -c flag**
+   - ❌ Complex quoting/escaping issues
+   - ❌ Hard to debug multi-line code
+   - ❌ Error messages are unclear
+   - Only use for single-line checks
+
+### Common Pitfalls to Avoid:
+
+- ❌ DON'T use `python3 -c "complex multiline code"` - quoting nightmares
+- ❌ DON'T use heredoc syntax (`python3 << 'EOF'`) - can cause file system errors
+- ❌ DON'T ignore existing analysis - check for *.duckdb and summary files FIRST
+- ✅ DO create standalone .py files for any non-trivial analysis
+- ✅ DO check if data is already loaded in DuckDB before reprocessing
+- ✅ DO use the mcp_pylance tool for quick Python snippets
+
 ## Step 1: File Discovery & Header Detection
 
 **CRITICAL**: Excel files often have corrupted or empty first rows. ALWAYS inspect raw structure first.
 
+### Method 1: Create analysis script (PREFERRED)
+
+Create a standalone Python file for inspection:
+
 ```python
-# Inspect first 3 rows to find actual headers
-df_raw = pd.read_excel(file, sheet_name=sheet, header=None, nrows=5)
+import pandas as pd
+
+# Inspect first 5 rows to find actual headers
+file_path = 'FilesIn/yourfile.xlsx'
+sheet_name = 'Sheet1'
+
+df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None, nrows=5)
 
 print('🔍 Finding header row...')
-for i in range(3):
-    print(f'Row {i}: {df_raw.iloc[i].tolist()[:10]}')
+for i in range(5):
+    row_data = df_raw.iloc[i].tolist()[:10]
+    print(f'Row {i}: {row_data}')
 ```
+
+Then execute: `python3 inspect_file.py`
 
 **Common patterns:**
 - Row 0: Empty/corrupted (nan, nan, nan...)
 - Row 1: Actual headers (Contract, Description, Customer Name...)
 - Row 2: First data row
 
-```python
-# Load with correct header
-df = pd.read_excel(file, sheet_name=sheet, header=1)  # Adjust based on inspection
-```
+### Method 2: Use Pylance code snippet tool
 
-## Step 2: Initial Pandas Overview (Token-Efficient)
-
-Run ONE comprehensive analysis script covering all key aspects:
+For quick checks without creating files:
 
 ```python
 import pandas as pd
 
-df = pd.read_excel(file, sheet_name=sheet, header=1)
+file_path = 'FilesIn/yourfile.xlsx'
+df_raw = pd.read_excel(file_path, sheet_name='Sheet1', header=None, nrows=5)
+
+for i in range(5):
+    print(f'Row {i}: {df_raw.iloc[i].tolist()[:10]}')
+```
+
+Once you identify the header row:
+
+```python
+# Load with correct header
+df = pd.read_excel(file_path, sheet_name='Sheet1', header=1)  # Adjust based on inspection
+print(f"Loaded {len(df):,} rows × {len(df.columns)} columns")
+```
+
+## Step 1.5: Check for Existing Analysis (CRITICAL!)
+
+**BEFORE starting any new analysis, ALWAYS check if work has already been done:**
+
+### Quick Check Commands:
+```bash
+# List all Python scripts
+ls -la *.py
+
+# List database files
+ls -la *.duckdb
+
+# List analysis summaries
+ls -la *Analysis*.md *Summary*.md
+
+# Check charts directory
+ls -la charts/ 2>/dev/null || echo "No charts directory"
+```
+
+### If Found:
+1. **Read existing summary files** - May fully answer user's question
+2. **Check database files** - Data may already be loaded in DuckDB
+3. **Review analysis scripts** - Can be reused or modified
+4. **Inform user** - "Your data has already been analyzed! Here's what I found..."
+
+### If Not Found:
+Proceed with fresh analysis below.
+
+## Step 2: Initial Pandas Overview (Token-Efficient)
+
+**Create a standalone analysis file** for comprehensive overview:
+
+Create `analyze_dataset.py`:
+
+```python
+#!/usr/bin/env python3
+import pandas as pd
+import warnings
+warnings.filterwarnings('ignore')
+
+file_path = 'FilesIn/yourfile.xlsx'
+sheet_name = 'Sheet1'
+
+# Load with correct header (adjust based on Step 1 inspection)
+df = pd.read_excel(file_path, sheet_name=sheet_name, header=1)
 
 print('='*80)
 print('📊 Dataset Overview')
@@ -123,6 +281,7 @@ print(f'Columns: {len(df.columns)}')
 # Date ranges (if applicable)
 date_cols = [c for c in df.columns if 'date' in c.lower() or 'month' in c.lower()]
 if date_cols:
+    df[date_cols[0]] = pd.to_datetime(df[date_cols[0]], errors='coerce')
     print(f'Period: {df[date_cols[0]].min()} to {df[date_cols[0]].max()}')
 
 # Key categorical distributions
@@ -148,7 +307,11 @@ for col in groupby_cols:
         top = df.groupby(col)['Revenue'].sum().sort_values(ascending=False).head(10)
         for name, value in top.items():
             print(f'  {name}: ${value/1_000_000:.2f}M')
+
+print('\n✅ Analysis complete!')
 ```
+
+Then execute: `python3 analyze_dataset.py`
 
 **Purpose**: Give user immediate business context to decide if deeper DuckDB analysis is needed
 
@@ -315,7 +478,7 @@ Always include guidance:
 
 ### 4.1 Setup Script Template
 
-Create `setup_duckdb.py`:
+Create `PythonScripts/setup_duckdb.py`:
 
 ```python
 #!/usr/bin/env python3
@@ -327,7 +490,7 @@ print("="*80)
 
 # Load Excel with proper headers
 print("\n📥 Loading Excel file...")
-df = pd.read_excel('filename.xlsx', sheet_name='SheetName', header=1)
+df = pd.read_excel('../FilesIn/filename.xlsx', sheet_name='SheetName', header=1)
 print(f"   ✓ Loaded {len(df):,} records with {len(df.columns)} columns")
 
 # Clean up data types for DuckDB compatibility
@@ -339,8 +502,8 @@ for col in date_cols:
 
 # Create DuckDB connection (persistent to disk)
 print("\n🔧 Creating DuckDB connection...")
-conn = duckdb.connect('analysis_name.duckdb')
-print("   ✓ Connected to analysis_name.duckdb")
+conn = duckdb.connect('../analysis_name.duckdb')
+print("   ✓ Connected to ../analysis_name.duckdb")
 
 # Register and create table
 print("\n📊 Creating table in DuckDB...")
@@ -367,18 +530,20 @@ result = conn.execute("""
 print(result.to_string(index=False))
 
 conn.close()
-print("\n✅ Database saved to: analysis_name.duckdb")
+print("\n✅ Database saved to: ../analysis_name.duckdb")
 ```
+
+**Note**: Scripts in `PythonScripts/` use `../` to access parent directory files.
 
 ### 4.2 Query Script Template
 
-Create `query_[domain].py` with pre-built business queries:
+Create `PythonScripts/query_[domain].py` with pre-built business queries:
 
 ```python
 #!/usr/bin/env python3
 import duckdb
 
-conn = duckdb.connect('analysis_name.duckdb', read_only=True)
+conn = duckdb.connect('../analysis_name.duckdb', read_only=True)
 
 def run_query(query, title):
     print(f"\n{'='*80}")
@@ -463,18 +628,17 @@ conn.close()
 
 ### 4.4 README Documentation
 
-Create `README_DuckDB.md`:
+Create `SetupAndHelp/README_DuckDB.md`:
 
 ```markdown
 # DuckDB Setup for [Dataset Name]
 
 ## Quick Start
 ```bash
-# Run pre-built analytics
-python3 query_domain.py
-
-# Interactive queries
-python3 custom_query.py
+# Run from project root
+python3 PythonScripts/setup_duckdb.py
+python3 PythonScripts/query_domain.py
+python3 PythonScripts/custom_query.py
 
 # In Python
 import duckdb
@@ -483,10 +647,11 @@ result = conn.execute("SELECT * FROM table LIMIT 10").df()
 ```
 
 ## Files
-- `analysis.duckdb` - Persistent database (2.5MB)
-- `setup_duckdb.py` - Reload from Excel
-- `query_domain.py` - Pre-built queries
-- `custom_query.py` - Interactive runner
+- `analysis.duckdb` - Persistent database (root level)
+- `PythonScripts/setup_duckdb.py` - Reload from Excel
+- `PythonScripts/query_domain.py` - Pre-built queries
+- `PythonScripts/custom_query.py` - Interactive runner
+- `AnalysisOut/*_Summary.md` - Analysis reports
 
 ## Example Queries
 [Include 5-10 business-relevant SQL queries]
@@ -508,11 +673,11 @@ Run 2-3 example queries that show **actionable business insights**:
 
 ## Step 5.5: Auto-Generate Charts for Summary Document
 
-**IMPORTANT**: When creating a summary document (e.g., `*_Analysis_Summary.md`), automatically generate 3-5 key visualizations and embed them.
+**IMPORTANT**: When creating a summary document in `AnalysisOut/`, automatically generate 3-5 key visualizations and embed them.
 
 ### Chart Generation Script
 
-Create `generate_summary_charts.py` to produce PNG images for embedding:
+Create `PythonScripts/generate_summary_charts.py` to produce PNG images for embedding:
 
 ```python
 #!/usr/bin/env python3
@@ -526,10 +691,10 @@ sns.set_theme(style="whitegrid")
 plt.rcParams['figure.figsize'] = (10, 6)
 plt.rcParams['font.size'] = 10
 
-# Create output directory for summary charts
-Path('summary_charts').mkdir(exist_ok=True)
+# Create output directory for charts (in parent directory)
+Path('../charts').mkdir(exist_ok=True)
 
-conn = duckdb.connect('analysis.duckdb', read_only=True)
+conn = duckdb.connect('../analysis.duckdb', read_only=True)
 
 print("📊 Generating summary charts for markdown embedding...")
 
@@ -548,7 +713,7 @@ plt.barh(df['category'], df['value_m'], color='steelblue', edgecolor='navy')
 plt.xlabel('Value ($M)', fontsize=12, fontweight='bold')
 plt.title('Top 10 by Category', fontsize=14, fontweight='bold')
 plt.tight_layout()
-plt.savefig('summary_charts/01_category_comparison.png', dpi=150, bbox_inches='tight')
+plt.savefig('../charts/01_category_comparison.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("✓ Chart 1: Category comparison")
 
@@ -569,7 +734,7 @@ plt.axvline(median_val, color='red', linestyle='--', linewidth=2,
             label=f'Median: {median_val:.1f}%')
 plt.legend()
 plt.tight_layout()
-plt.savefig('summary_charts/02_distribution.png', dpi=150, bbox_inches='tight')
+plt.savefig('../charts/02_distribution.png', dpi=150, bbox_inches='tight')
 plt.close()
 print("✓ Chart 2: Distribution")
 
@@ -1691,11 +1856,119 @@ Run `generate_pdf_report.py` to create a professional PDF with:
 ---
 ```
 
+# Troubleshooting Guide
+
+## Common Errors and Solutions
+
+### 1. Terminal File System Errors
+
+**Error:** `ENOPRO: No file system provider found for resource 'file://...'`
+
+**Cause:** Complex terminal commands with heredoc or multiline strings can trigger path resolution issues
+
+**Solution:**
+- ✅ Create standalone .py files using `create_file` tool
+- ✅ Execute with simple: `python3 filename.py`
+- ✅ Or use `mcp_pylance_mcp_s_pylanceRunCodeSnippet` for snippets
+- ❌ Avoid: `python3 << 'EOF' ... EOF` heredoc syntax
+- ❌ Avoid: `python3 -c "multiline code"`
+
+### 2. Analysis Already Exists
+
+**Symptom:** User asks to analyze a file that's already been processed
+
+**Solution:**
+1. Check for existing files FIRST:
+   ```bash
+   ls -la *.duckdb *Summary*.md *.py
+   ```
+2. Read existing summary files and present findings
+3. Offer to run additional queries or refresh analysis
+4. Don't recreate what already exists!
+
+### 3. Python Import Errors
+
+**Error:** `ModuleNotFoundError: No module named 'pandas'`
+
+**Solution:**
+- Check if packages are installed: `pip3 list | grep pandas`
+- Install if needed: `pip3 install pandas openpyxl duckdb`
+- Workspace should have these pre-installed
+
+### 4. Excel Reading Issues
+
+**Error:** `XLRDError: Excel xlsx file; not supported`
+
+**Solution:**
+- Ensure openpyxl is installed: `pip3 install openpyxl`
+- Pandas needs openpyxl for .xlsx files (not xlrd)
+
+### 5. DuckDB Column Name Errors
+
+**Error:** `Binder Error: Referenced column "Revenue" not found`
+
+**Cause:** Column names with spaces need quoting
+
+**Solution:**
+```sql
+-- Use double quotes for column names with spaces
+SELECT "Revenue To Date", "Gross Profit %"
+FROM table_name
+WHERE "Contract Status" = 'Open'
+```
+
+### 6. Date Parsing Issues
+
+**Symptom:** Dates show as numbers or NaT
+
+**Solution:**
+```python
+# Explicitly convert date columns before loading to DuckDB
+date_cols = ['WIPMth', 'Start Date', 'End Date']
+for col in date_cols:
+    if col in df.columns:
+        df[col] = pd.to_datetime(df[col], errors='coerce')
+```
+
+### 7. Memory Issues with Large Files
+
+**Symptom:** Kernel crashes or "Killed" messages
+
+**Solution:**
+- Load data in chunks
+- Use DuckDB to query Excel directly (no pandas intermediate)
+- Filter early to reduce data volume
+```python
+# DuckDB can read Excel directly
+conn.execute("CREATE TABLE data AS SELECT * FROM read_excel_auto('file.xlsx')")
+```
+
+### 8. Execution Order Matters
+
+**Problem:** Running queries before database is created
+
+**Solution:** Always follow this order:
+1. ✅ Check for existing *.duckdb file
+2. ✅ If not found, run setup_duckdb.py
+3. ✅ Then run query scripts or custom queries
+4. ❌ Don't try to query before setup
+
+### Best Practices Checklist
+
+Before executing any analysis:
+- [ ] List directory contents to see existing work
+- [ ] Check for *.duckdb database files
+- [ ] Read any existing summary *.md files  
+- [ ] Create standalone .py files for complex operations
+- [ ] Use simple `python3 script.py` commands
+- [ ] Test with small data samples first
+- [ ] Provide clear error messages to user if issues arise
+
 # Quick Reference Commands
 
 ## Initial Excel Inspection
 ```python
-df_raw = pd.read_excel('file.xlsx', sheet_name='Sheet1', header=None, nrows=5)
+df_raw = pd.read_excel('FilesIn/file.xlsx', sheet_name='Sheet1', header=None, nrows=5)
 for i in range(3): print(f'Row {i}: {df_raw.iloc[i].tolist()[:10]}')
 ```
 
@@ -1709,14 +1982,14 @@ print(result)
 
 ## Helper Script Execution
 ```bash
-# Setup
-python3 setup_duckdb.py
+# Run from project root
+python3 PythonScripts/setup_duckdb.py
 
 # Pre-built queries
-python3 query_domain.py
+python3 PythonScripts/query_domain.py
 
 # Custom query
-python3 custom_query.py "SELECT * FROM table WHERE condition"
+python3 PythonScripts/custom_query.py "SELECT * FROM table WHERE condition"
 ```
 
 ---
