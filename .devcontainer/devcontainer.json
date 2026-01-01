@@ -1,0 +1,41 @@
+{
+  "name": "Excel Data Explorer Agent Environment",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "yzane.markdown-pdf",
+        "tomoki1207.pdf",
+        "ms-python.vscode-pylance"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "files.autoSave": "afterDelay",
+        "files.autoSaveDelay": 1000
+      }
+    }
+  },
+  
+  "postCreateCommand": "pip install --upgrade pip && pip install -r .devcontainer/requirements-codespace.txt",
+  
+  "forwardPorts": [8000, 8080],
+  
+  "remoteUser": "vscode",
+  
+  "mounts": [
+    "source=${localWorkspaceFolder}/.vscode/prompts,target=/workspaces/${localWorkspaceFolderBasename}/.vscode/prompts,type=bind,consistency=cached"
+  ],
+  
+  "workspaceFolder": "/workspaces/ExploreData"
+}

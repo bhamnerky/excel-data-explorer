@@ -1,0 +1,49 @@
+# Excel Data Explorer - Ignore sensitive data files
+
+# Excel data files (contain sensitive business data)
+*.xlsx
+*.xls
+*.xlsm
+*.xlsb
+*.csv
+
+# DuckDB databases (contain processed data)
+*.duckdb
+*.duckdb.wal
+
+# Generated visualizations
+ExcelIn/charts/*.html
+ExcelIn/charts/*.png
+ExcelIn/summary_charts/*.png
+
+# Generated analysis documents
+ExcelIn/*_Analysis_Summary.md
+ExcelIn/*_Analysis_Summary.pdf
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# VS Code settings (keep prompts, ignore workspace settings)
+.vscode/*
+!.vscode/prompts/
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
